@@ -26,15 +26,9 @@ fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
     val reminders by viewModel.reminders.collectAsState()
     val today = LocalDate.now()
 
-    val todayReminders = remember(reminders) {
-        reminders.filter { reminder ->
-            val start = reminder.reminderDate
-                ?: Date(reminder.time).toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
-            val end = reminder.reminderDateEnd
-            // Show if today falls anywhere within the reminder's date range
-            if (end != null) !today.isBefore(start) && !today.isAfter(end)
-            else start == today
-        }
+    // Sort: newest first
+    val sortedReminders = remember(reminders) {
+        reminders.sortedByDescending { it.time }
     }
 
     Column(
@@ -45,13 +39,13 @@ fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
         // ── Header ──────────────────────────────────────────
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp)) {
             Text(
-                text = "Today",
+                text = "Inbox",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onBackground
             )
             Text(
-                text = today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy")),
+                text = "All captured WhatsApp messages",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -60,32 +54,25 @@ fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
         HorizontalDivider()
 
         // ── Content ─────────────────────────────────────────
-        if (todayReminders.isEmpty()) {
+        if (sortedReminders.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("🎉", fontSize = 52.sp)
+                    Text("📬", fontSize = 52.sp)
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "Nothing due today!",
+                        text = "No messages captured yet",
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "WhatsApp reminders for today\nwill appear here.",
-                        fontSize = 13.sp,
-                        textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         } else {
             Text(
-                text = "${todayReminders.size} reminder${if (todayReminders.size > 1) "s" else ""} today",
+                text = "${sortedReminders.size} message${if (sortedReminders.size > 1) "s" else ""} captured",
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -94,7 +81,7 @@ fun TodayScreen(viewModel: NotificationViewModel = viewModel()) {
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(todayReminders) { reminder ->
+                items(sortedReminders) { reminder ->
                     CalendarReminderCard(reminder, highlight = true)
                 }
                 item { Spacer(Modifier.height(16.dp)) }

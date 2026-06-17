@@ -20,17 +20,15 @@ object ModelDownloadManager {
 
     /**
      * Filename used to store the model locally.
-     * Change MODEL_URL below to the real HuggingFace / CDN link once you have it.
+     * Updated to match the actual file in assets.
      */
-    private const val MODEL_FILE_NAME = "functiongemma-270M-it.task"
+    private const val MODEL_FILE_NAME = "functiongemma-270m-it-Q4_K_M.gguf"
 
     /**
-     * FunctionGemma 270M IT in MediaPipe .task format.
-     * Source: https://huggingface.co/sasha-denisov/function-gemma-270M-it
-     * Converted from google/functiongemma-270m-it (SafeTensors → TFLite, int8, bundled with tokenizer)
+     * FunctionGemma 270M IT in GGUF format.
      */
     private const val MODEL_URL =
-        "https://huggingface.co/sasha-denisov/function-gemma-270M-it/resolve/main/functiongemma-270M-it.task"
+        "https://huggingface.co/Llama-2-7b-chat-hf/resolve/main/Llama-2-7b-chat-hf.Q4_K_M.gguf" // Placeholder URL
 
     // ── Public API ────────────────────────────────────────────────────────────
 

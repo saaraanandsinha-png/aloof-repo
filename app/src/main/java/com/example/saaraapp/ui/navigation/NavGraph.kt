@@ -2,6 +2,7 @@ package com.example.saaraapp.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.*
@@ -13,6 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.saaraapp.ui.screens.CalendarScreen
+import com.example.saaraapp.ui.screens.ChatScreen
 import com.example.saaraapp.ui.screens.SettingsScreen
 import com.example.saaraapp.ui.screens.TodayScreen
 import com.example.saaraapp.ui.screens.WeekScreen
@@ -22,6 +24,7 @@ import kotlinx.serialization.Serializable
     @Serializable data object Today    : Screen()
     @Serializable data object Week     : Screen()
     @Serializable data object Calendar : Screen()
+    @Serializable data object Chat     : Screen()
     @Serializable data object Settings : Screen()
 }
 
@@ -35,6 +38,7 @@ fun NavGraph(navController: NavHostController, modifier: Modifier = Modifier) {
         composable<Screen.Today>    { TodayScreen() }
         composable<Screen.Week>     { WeekScreen() }
         composable<Screen.Calendar> { CalendarScreen() }
+        composable<Screen.Chat>     { ChatScreen() }
         composable<Screen.Settings> { SettingsScreen(navController) }
     }
 }
@@ -62,6 +66,12 @@ fun BottomNavBar(navController: NavHostController) {
             label    = { Text("Calendar") },
             selected = current?.contains("Calendar") == true,
             onClick  = { navController.navigate(Screen.Calendar) { launchSingleTop = true } }
+        )
+        NavigationBarItem(
+            icon     = { Icon(Icons.Default.Chat, "Chat") },
+            label    = { Text("Chat") },
+            selected = current?.contains("Chat") == true,
+            onClick  = { navController.navigate(Screen.Chat) { launchSingleTop = true } }
         )
     }
 }

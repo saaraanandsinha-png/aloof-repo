@@ -8,6 +8,7 @@ lifecycleRuntimeKtx = "2.9.1"
 activityCompose = "1.10.1"
 kotlin = "2.2.10"
 composeBom = "2026.02.01"
+llamatik = "1.7.0"
 room = "2.8.4"
 ksp = "2.2.10-2.0.2"
 navigationCompose = "2.8.5"
@@ -36,6 +37,7 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
 vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
 vico-core = { group = "com.patrykandpatrick.vico", name = "core", version.ref = "vico" }
+llamatik = { group = "com.llamatik", name = "library", version.ref = "llamatik" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
