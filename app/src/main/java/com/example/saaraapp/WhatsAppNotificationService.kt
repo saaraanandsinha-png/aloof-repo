@@ -17,13 +17,13 @@ class WhatsAppNotificationService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
-        // Try to load FunctionGemma. If it's in assets, initialize will copy it.
+        // Try to load model. If it's in assets, initialize will copy it.
         serviceScope.launch {
             val modelFile = ModelDownloadManager.getModelFileIfExists(applicationContext)
-                ?: File(applicationContext.filesDir, "functiongemma-270m-it-Q4_K_M.gguf")
+                ?: File(applicationContext.filesDir, "Qwen3-0.6B-Q4_K_M.gguf")
             
             gemma.initialize(modelFile)
-            Log.i("AloofService", "FunctionGemma initialization attempted")
+            Log.i("AloofService", "Model initialization attempted")
         }
     }
 
@@ -40,19 +40,24 @@ class WhatsAppNotificationService : NotificationListenerService() {
         val sender  = extras.getString("android.title") ?: "Unknown"
         val message = extras.getCharSequence("android.text")?.toString() ?: ""
 
-        Log.d("AloofService", "Notification received from $sender: $message")
+        // 1. Efficient Pre-filter: Ignore junk but keep anything with dates/keywords
+        if (!KeywordExtractor.isRelevant(message)) return
 
-        // Save to DB on IO thread
+        Log.d("AloofService", "Relevant notification detected: $message")
+
+        // 2. Process with LLM on IO thread
         serviceScope.launch {
             val result = gemma.analyze(message)
 
-            // Use Gemma's extracted date if available, otherwise fall back to DateParser
-            val (reminderDate, reminderDateEnd) = if (result.dateText != null) {
+            // 3. Date extraction: Prioritize AI date, fall back to regex parser
+            val (reminderDate, reminderDateEnd) = if (result.dateText != null && result.dateText != "null") {
                 Pair(DateParser.parse(result.dateText), null)
             } else {
                 DateParser.extractRangeFrom(message)
             }
 
+            // 4. Capture everything that has a date or is marked as a reminder
+            // This ensures "Meeting at 5" and "No class tomorrow" are both saved.
             val reminder = ReminderItem(
                 id              = "${sbn.packageName}_${System.currentTimeMillis()}_${(sender + message).hashCode()}",
                 sender          = sender,
@@ -68,7 +73,7 @@ class WhatsAppNotificationService : NotificationListenerService() {
                 .reminderDao()
                 .insertReminder(reminder.toEntity())
             
-            Log.d("AloofService", "Saved to database: $message")
+            Log.d("AloofService", "Saved captured message: $message (Date: $reminderDate)")
         }
     }
 

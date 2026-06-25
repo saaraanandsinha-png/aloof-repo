@@ -20,9 +20,9 @@ object ModelDownloadManager {
 
     /**
      * Filename used to store the model locally.
-     * Updated to match the actual file in assets.
+     * Updated to Qwen3 model.
      */
-    private const val MODEL_FILE_NAME = "functiongemma-270m-it-Q4_K_M.gguf"
+    private const val MODEL_FILE_NAME = "Qwen3-0.6B-Q4_K_M.gguf"
 
     /**
      * FunctionGemma 270M IT in GGUF format.

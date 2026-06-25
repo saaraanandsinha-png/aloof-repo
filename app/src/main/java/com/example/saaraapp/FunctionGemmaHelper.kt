@@ -58,18 +58,20 @@ class FunctionGemmaHelper(private val context: Context) {
                 return@withContext
             }
 
-            // Set parameters BEFORE initialization
+            // Optimized parameters for mobile:
+            // useMmap = true allows loading only parts of the model needed, drastically 
+            // improving initial load time and reducing RAM pressure.
             LlamaBridge.updateGenerateParams(
                 temperature = 0.1f,
-                maxTokens = 128,
+                maxTokens = 64,       
                 topP = 0.95f,
                 topK = 40,
                 repeatPenalty = 1.1f,
-                contextLength = 1024,
-                numThreads = 4,
-                useMmap = true,
-                flashAttention = false,
-                batchSize = 512,
+                contextLength = 1024,  
+                numThreads = 4,        
+                useMmap = true,        
+                flashAttention = true, // Enable if library supports, otherwise it ignores
+                batchSize = 256,
                 gpuLayers = 0
             )
 
@@ -90,7 +92,7 @@ class FunctionGemmaHelper(private val context: Context) {
                     gpuLayers = 0
                 )
                 isReady = true
-                Log.i(TAG, "FunctionGemma loaded and tuned from ${finalFile.name}")
+                Log.i(TAG, "Qwen3 loaded and tuned from ${finalFile.name}")
             } else {
                 Log.e(TAG, "LlamaBridge failed to load model from ${finalFile.absolutePath}")
             }
@@ -129,14 +131,22 @@ class FunctionGemmaHelper(private val context: Context) {
 
     /**
      * General chat method that returns the raw string from the model.
-     * Used for testing the model's raw performance in the Chat tab.
+     * Supports an optional [context] block (e.g. today's reminders) to help the model.
      */
-    suspend fun askGemma(message: String): String = withContext(Dispatchers.Default) {
+    suspend fun askGemma(message: String, context: String? = null): String = withContext(Dispatchers.Default) {
         if (!isReady) return@withContext "Model not ready."
 
         try {
-            val messages = listOf("user" to message)
-            val prompt = LlamaBridge.applyChatTemplate(messages, true) ?: message
+            val userPrompt = if (context != null) {
+                "You are Saara, a personal assistant. Use the context below to help the user.\n\n" +
+                "CONTEXT OF TODAY'S REMINDERS:\n$context\n\n" +
+                "USER QUESTION: $message"
+            } else {
+                "You are Saara, a personal assistant. Respond to: $message"
+            }
+            
+            val messages = listOf("user" to userPrompt)
+            val prompt = LlamaBridge.applyChatTemplate(messages, true) ?: userPrompt
             Log.d(TAG, "Chatting with prompt: $prompt")
             generateInternal(prompt)
         } catch (e: Exception) {
@@ -150,22 +160,32 @@ class FunctionGemmaHelper(private val context: Context) {
      */
     private suspend fun generateInternal(prompt: String): String = suspendCancellableCoroutine { cont ->
         val output = StringBuilder()
+        var deltaCount = 0
         val callback = object : GenStream {
             override fun onDelta(text: String) {
-                // Manual stop sequence check for Gemma and safety
-                if (text.contains("<end_of_turn>") || text.contains("user") || text.contains("User:")) {
-                    LlamaBridge.nativeCancelGenerate()
-                    if (cont.isActive) cont.resume(output.toString())
-                    return
+                deltaCount++
+                // Log for debugging to see what's causing cancels
+                Log.d(TAG, "onDelta[$deltaCount]: '$text'")
+
+                // Manual stop sequence check. 
+                // We wait for a few deltas to pass to avoid catching prompt echo.
+                if (deltaCount > 3) {
+                    if (text.contains("<|im_end|>") || text.contains("<end_of_turn>") || text.contains("User:")) {
+                        Log.d(TAG, "Stop sequence detected, requested cancel.")
+                        LlamaBridge.nativeCancelGenerate()
+                        if (cont.isActive) cont.resume(output.toString().trim())
+                        return
+                    }
                 }
                 output.append(text)
             }
 
             override fun onComplete() {
-                if (cont.isActive) cont.resume(output.toString())
+                if (cont.isActive) cont.resume(output.toString().trim())
             }
 
             override fun onError(message: String) {
+                Log.e(TAG, "Streaming error: $message")
                 if (cont.isActive) cont.resumeWithException(Exception(message))
             }
         }
@@ -180,7 +200,7 @@ class FunctionGemmaHelper(private val context: Context) {
     // ── Prompt ────────────────────────────────────────────────────────────────
 
     /**
-     * Builds a Gemma function-calling prompt using the chat template.
+     * Builds a model prompt using the chat template.
      * Ends with { to force the model to start the JSON immediately.
      */
     private fun buildPrompt(message: String): String {
@@ -188,7 +208,12 @@ class FunctionGemmaHelper(private val context: Context) {
             "user" to "Extract reminder data. Return ONLY JSON.\nMessage: \"$message\"\nSchema: {\"is_reminder\":bool, \"category\":string, \"date\":string, \"time\":string, \"tags\":[]}"
         )
         val template = LlamaBridge.applyChatTemplate(messages, true) ?: ""
-        return template + "{"
+        // If template doesn't include assistant tag at the end, add Qwen style fallback
+        val finalPrompt = if (template.isBlank()) {
+            "<|im_start|>user\nExtract reminder data. Return ONLY JSON.\nMessage: \"$message\"\nSchema: {\"is_reminder\":bool, \"category\":string, \"date\":string, \"time\":string, \"tags\":[]}<|im_end|>\n<|im_start|>assistant\n"
+        } else template
+
+        return finalPrompt + "{"
     }
 
     // ── Response parser ───────────────────────────────────────────────────────
